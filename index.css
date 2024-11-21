@@ -1,0 +1,14 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background-color: #282828;
+  }
+  
+  .container {
+    margin-top: 50%;
+  }
+input {
+    margin-top: 8%;
+}
