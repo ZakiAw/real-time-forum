@@ -5,15 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="index.css">
     <title>Sign in</title>
-
 </head>
 <body>
     <div class="container">
-    <input id="fname" placeholder="First Name"></input>
-    <input id="lname" placeholder="Last Name"></input>
-    <input id="email" placeholder="Email"></input>
-    <input id="password" placeholder="Password"></input>
-    <input id="age" placeholder="Age"></input>
-</div>
+        <h1>Sign Up</h1>
+        <input id="nname" placeholder="Nickname">
+        <input id="fname" placeholder="First Name">
+        <input id="lname" placeholder="Last Name">
+        <input id="email" placeholder="Email">
+        <input id="password" placeholder="Password" type="password">
+        <div class="dropdown-container">
+            <input id="age-input" placeholder="Age">
+            <select id="gender-dropdown">
+                <option value="" disabled selected>Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+            </select>
+        </div>
+        <button id="submit" type="submit">Sign Up</button>
+    </div>
 </body>
 </html>

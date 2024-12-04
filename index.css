@@ -1,14 +1,76 @@
 body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    background-color: #282828;
-  }
-  
-  .container {
-    margin-top: 50%;
-  }
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  background-color: #282828;
+  height: 90vh
+}
+
+.container {
+  width: 300px;
+  padding: 20px;
+  background: #3a3a3a;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #ffffff;
+}
+
 input {
-    margin-top: 8%;
+  width: 90%;
+  padding: 10px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 5px;
+  outline: none;
+  font-size: 16px;
+}
+
+#submit {
+  width: 100%;
+  padding: 10px;
+  margin-top: 15px;
+  background-color: #007BFF;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+#submit:active {
+  background-color: #0056b3;
+}
+.dropdown-container {
+  display: flex;
+  gap: 29px;
+  margin-top: 5px;
+  justify-content: center;
+  align-items: center;
+}
+#age-input {
+  height: 15px;
+  width: 40%;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  outline: none;
+  background-color: #ffffff;
+}
+#gender-dropdown {
+  margin-top: 7px;
+  height: 35px;
+  width: 40%;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  outline: none;
+  background: #ffffff;
 }
