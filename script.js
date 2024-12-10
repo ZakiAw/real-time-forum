@@ -21,7 +21,7 @@ document.getElementById('submit-btn').addEventListener('click', async function (
     };
 
     try {
-        const response = await fetch('http://localhost:8080/register', {
+        const response = await fetch('http://localhost:8080/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

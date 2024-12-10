@@ -22,9 +22,8 @@ func SqlTables() {
 	email TEXT NOT NULL UNIQUE,
 	password TEXT NOT NULL,
 	age INTEGER NOT NULL,
-	CHECK (age >= 13)
-	gender TEXT NOT NULL
-	first_name TEXT NOT NULL
+	gender TEXT NOT NULL,
+	first_name TEXT NOT NULL,
 	last_name TEXT NOT NULL
 	);
 	CREATE TABLE IF NOT EXISTS posts (
