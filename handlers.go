@@ -52,5 +52,32 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to create account", http.StatusInternalServerError)
 		return
 	}
+	// w.Header().Set("Content-Type", "application/json")
+    // w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Account created successfully!")
 }
+
+
+// func LoginHandler(w http.ResponseWriter, r *http.Request) {
+// 	if r.Method == http.MethodPost {
+// 		nickname := r.FormValue("nickname")
+// 		password := r.FormValue("password")
+
+// 		var storedPassword string
+// 		err := db.QueryRow(`SELECT password FROM users WHERE nickname = ?`, nickname).Scan(&storedPassword)
+// 		if err != nil {
+// 			http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
+// 			return
+// 		}
+
+// 		if storedPassword != password {
+// 			http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
+// 			return
+// 		}
+
+// 		// Respond with success
+// 		w.Header().Set("Content-Type", "application/json")
+// 		w.WriteHeader(http.StatusOK)
+// 		fmt.Fprint(w, `{"message": "Login successful!"}`)
+// 	}
+// }
