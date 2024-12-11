@@ -4,17 +4,21 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
-var db *sql.DB
-func SqlTables() {
+
+func makeSQL() *sql.DB {
 	db, err := sql.Open("sqlite3", "./SQL/data.db")
 	if err != nil {
-		fmt.Println("opening db error", err)
-		return
+		fmt.Println("opening ERR", err)
+		os.Exit(1)
 	}
+	return db
+}
 
+func SqlTables(db *sql.DB) {
 	query := `
 	CREATE TABLE IF NOT EXISTS users (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +38,7 @@ func SqlTables() {
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)
 	`
-	_, err = db.Exec(query)
+	_, err := db.Exec(query)
 	if err != nil {
 		log.Fatal(err)
 	}
