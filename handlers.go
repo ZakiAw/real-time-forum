@@ -6,9 +6,10 @@ import (
 )
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	tbl.ExecuteTemplate(w, "index.html", nil)
 	// fmt.Println("Incoming request method:", r.Method)
 	if r.Method == http.MethodGet {
-		err := tbl.ExecuteTemplate(w, "test.html", nil)
+		err := tbl.ExecuteTemplate(w, "index.html", nil)
 		if err != nil {
 			fmt.Println("Error rendering template:", err)
 			http.Error(w, "Error rendering template", http.StatusInternalServerError)
