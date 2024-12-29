@@ -26,7 +26,7 @@ func main() {
 	// tbl, _ = template.ParseGlob("*.html")
 
 	http.HandleFunc("/", RegisterHandler)
-//	http.HandleFunc("/login", LoginHandler)
+	http.HandleFunc("/login", LoginHandler)
 	tbl = template.Must(template.ParseFiles("./index.html"))
 	http.ListenAndServe(":8080", nil)
 	}

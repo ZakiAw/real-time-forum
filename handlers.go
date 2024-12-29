@@ -58,27 +58,38 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Account created successfully!")
 }
 
+func LoginHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method == http.MethodGet {
+        err := tbl.ExecuteTemplate(w, "index.html", nil)
+        if err != nil {
+            fmt.Println("Error rendering template:", err)
+            http.Error(w, "Error rendering template", http.StatusInternalServerError)
+        }
+        return
+    }
 
-// func LoginHandler(w http.ResponseWriter, r *http.Request) {
-// 	if r.Method == http.MethodPost {
-// 		nickname := r.FormValue("nickname")
-// 		password := r.FormValue("password")
+    if r.Method == http.MethodPost {
+        nickname := r.FormValue("nickname")
+        password := r.FormValue("password")
 
-// 		var storedPassword string
-// 		err := db.QueryRow(`SELECT password FROM users WHERE nickname = ?`, nickname).Scan(&storedPassword)
-// 		if err != nil {
-// 			http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
-// 			return
-// 		}
+        var storedPassword string
+        err := db.QueryRow(`SELECT password FROM users WHERE nickname = ?`, nickname).Scan(&storedPassword)
+        if err != nil {
+            // If the user does not exist or there is an error with the query, handle it
+            fmt.Println("Error querying database:", err)
+            http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
+            return
+        }
 
-// 		if storedPassword != password {
-// 			http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
-// 			return
-// 		}
+        if storedPassword != password {
+            // If the password is incorrect, send an error
+            http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
+            return
+        }
 
-// 		// Respond with success
-// 		w.Header().Set("Content-Type", "application/json")
-// 		w.WriteHeader(http.StatusOK)
-// 		fmt.Fprint(w, `{"message": "Login successful!"}`)
-// 	}
-// }
+        // If login is successful, send a success response
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        fmt.Fprint(w, `{"message": "Login successful!"}`)
+    }
+}

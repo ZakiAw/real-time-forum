@@ -1,6 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
-   renderSignupForm();
-},
+
 function renderSignupForm() {
     document.body.innerHTML = `
          <div class="container">
@@ -46,8 +44,7 @@ function renderSignupForm() {
              console.error("Sign-up error:", err);
          }
      });
- }
-
+}
 
  function renderLoginForm() {
    document.body.innerHTML = `
@@ -85,3 +82,6 @@ function renderSignupForm() {
        }
    });
 }
+document.addEventListener("DOMContentLoaded", () => {
+    renderSignupForm();
+ })
