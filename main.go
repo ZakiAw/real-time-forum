@@ -27,6 +27,8 @@ func main() {
 
 	http.HandleFunc("/", RegisterHandler)
 	http.HandleFunc("/login", LoginHandler)
+	http.HandleFunc("/home", PostHandler)
+	http.HandleFunc("/check-login", CheckLoginHandler)
 	tbl = template.Must(template.ParseFiles("./index.html"))
 	http.ListenAndServe(":8080", nil)
 	}

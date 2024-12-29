@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"encoding/json"
 )
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +56,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// w.Header().Set("Content-Type", "application/json")
     // w.WriteHeader(http.StatusOK)
+	setSession(w, nickname)
 	fmt.Fprint(w, "Account created successfully!")
 }
 
@@ -75,21 +77,57 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         var storedPassword string
         err := db.QueryRow(`SELECT password FROM users WHERE nickname = ?`, nickname).Scan(&storedPassword)
         if err != nil {
-            // If the user does not exist or there is an error with the query, handle it
             fmt.Println("Error querying database:", err)
             http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
             return
         }
 
         if storedPassword != password {
-            // If the password is incorrect, send an error
             http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
             return
         }
 
-        // If login is successful, send a success response
+		setSession(w, nickname)
+
+        // Send a JSON response on successful login
         w.Header().Set("Content-Type", "application/json")
         w.WriteHeader(http.StatusOK)
         fmt.Fprint(w, `{"message": "Login successful!"}`)
+    }
+}
+
+
+func PostHandler(w http.ResponseWriter, r *http.Request) {
+	_, loggedIn := getSession(r)
+    if !loggedIn {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var post struct {
+		Content string `json:"content"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&post)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Printf("New Post: %s\n", post.Content)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message": "Post created successfully!"}`))
+}
+
+func CheckLoginHandler(w http.ResponseWriter, r *http.Request) {
+    _, loggedIn := getSession(r)
+    if loggedIn {
+        w.WriteHeader(http.StatusOK)
+    } else {
+        w.WriteHeader(http.StatusUnauthorized)
     }
 }
