@@ -19,6 +19,8 @@ function renderSignupForm() {
                  </div>
                  <button id="submit" type="submit">Sign Up</button>
              </form>
+             <br>
+              <button id="login-page-button">Have an Account?</button>
          </div>
          `
  
@@ -43,6 +45,10 @@ function renderSignupForm() {
          } catch (err) {
              console.error("Sign-up error:", err);
          }
+     });
+     const loginPageButton = document.getElementById("login-page-button");
+     loginPageButton.addEventListener("click", () => {
+         renderLoginForm();
      });
 }
 
