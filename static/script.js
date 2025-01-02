@@ -87,49 +87,86 @@ function renderLoginForm() {
         }
     });
  }
- 
- function renderHome() {
-    document.body.innerHTML = `
-        <div class="container">
-            <h1>Welcome to the Forum</h1>
-            <form id="post-form">
-                <textarea id="post-content" placeholder="Write your post here..." required></textarea>
-                <button type="submit">Post</button>
-            </form>
-            <div id="posts">
-                <h2>Recent Posts</h2>
-                <ul id="post-list"></ul>
+ async function renderHome() {
+    try {
+        const response = await fetch("/home", {
+            method: "GET",
+            credentials: "include", // Include cookies if using sessions for authentication
+        });
+
+        const posts = await response.json();
+
+        // Check if posts is null or not an array
+        
+        document.body.innerHTML = `
+            <div class="container">
+                <h1>Welcome to the Forum</h1>
+                <form id="post-form">
+                    <input id="post-title" placeholder="Title" required />
+                    <textarea id="post-content" placeholder="Write your post here..." required></textarea>
+                    <button type="submit">Post</button>
+                </form>
+                <div id="posts">
+                    <h2>Recent Posts</h2>
+                    <div id="post-list" class="post-grid"></div>
+                </div>
             </div>
-        </div>
-    `;
+        `;
 
-    // Attach event listener for posting
-    document.getElementById("post-form").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const content = document.getElementById("post-content").value;
-
-        try {
-            const response = await fetch("/home", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content }),
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                alert(data.message);
-                const postList = document.getElementById("post-list");
-                const newPost = document.createElement("li");
-                newPost.textContent = content;
-                postList.appendChild(newPost);
-            } else {
-                const errorText = await response.text();
-                alert(`Error: ${errorText}`);
+        // Re-attach the event listener for posting
+        document.getElementById("post-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (posts == null) {
+                postList.innerHTML = "<p>No posts available yet.</p>";
+            } else if  (!Array.isArray(posts)) {
+                console.error("Invalid response format:", posts);
+                return;  // Stop if posts is invalid
             }
-        } catch (err) {
-            console.error("Error posting:", err);
+            const title = document.getElementById("post-title").value;
+            const content = document.getElementById("post-content").value;
+            
+            try {
+                const response = await fetch("/home", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ title, content }),
+                });
+
+                if (response.ok) {
+                    renderHome(); // Refresh the page to show new posts
+                } else {
+                    const errorText = await response.text();
+                    alert(`Error: ${errorText}`);
+                }
+            } catch (err) {
+                console.error("Error posting:", err);
+            }
+        });
+
+        // Display posts
+        const postList = document.getElementById("post-list");
+        if (posts.length === 0) {
+            postList.innerHTML = "<p>No posts available yet.</p>";
+        } else {
+            posts.forEach(post => {
+                const postDiv = document.createElement("div");
+                postDiv.className = "post";
+
+                postDiv.innerHTML = `
+                    <div class="post-header">
+                        <span class="post-username">${post.username}</span>
+                    </div>
+                    <h3 class="post-title">${post.title}</h3>
+                    <p class="post-content">${post.content}</p>
+                    <small class="post-date">${new Date(post.created_at).toLocaleString()}</small>
+                `;
+                postList.appendChild(postDiv);
+            });
         }
-    });
+
+    } catch (err) {
+        console.error("Error loading posts:", err);
+    }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

@@ -96,38 +96,88 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-
 func PostHandler(w http.ResponseWriter, r *http.Request) {
-	_, loggedIn := getSession(r)
-    if !loggedIn {
-        http.Redirect(w, r, "/login", http.StatusSeeOther)
+    if r.Method == http.MethodGet {
+        // Query the database for posts
+        rows, err := db.Query(`
+            SELECT title, content, username, created_at
+            FROM posts
+			ORDER BY created_at DESC
+        `)
+        if err != nil {
+            http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
+            return
+        }
+        defer rows.Close()
+		type Post struct {
+			Title    string `json:"title"`
+			Content  string `json:"content"`
+			Username string `json:"username"`
+			CreatedAt string `json:"created_at"`
+		}
+		
+		var posts []Post
+		
+		for rows.Next() {
+			var post Post
+			err := rows.Scan(&post.Title, &post.Content, &post.Username, &post.CreatedAt)
+			if err != nil {
+				http.Error(w, "Failed to scan post", http.StatusInternalServerError)
+				return
+			}
+			posts = append(posts, post)
+		}
+		
+        w.Header().Set("Content-Type", "application/json")
+        if err := json.NewEncoder(w).Encode(posts); err != nil {
+            http.Error(w, "Failed to encode posts as JSON", http.StatusInternalServerError)
+        }
         return
     }
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
 
-	var post struct {
-		Content string `json:"content"`
-	}
+    if r.Method == http.MethodPost {
+        // Handle post creation as before
+        var postData struct {
+            Title   string `json:"title"`
+            Content string `json:"content"`
+        }
+        err := json.NewDecoder(r.Body).Decode(&postData)
+        if err != nil {
+            http.Error(w, "Invalid input", http.StatusBadRequest)
+            return
+        }
 
-	err := json.NewDecoder(r.Body).Decode(&post)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
+        _, loggedIn := getSession(r)
+        if !loggedIn {
+            http.Redirect(w, r, "/login", http.StatusSeeOther)
+            return
+        }
 
-	fmt.Printf("New Post: %s\n", post.Content)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "Post created successfully!"}`))
-}
+        nickname, _ := getSession(r)
 
-func CheckLoginHandler(w http.ResponseWriter, r *http.Request) {
-    _, loggedIn := getSession(r)
-    if loggedIn {
-        w.WriteHeader(http.StatusOK)
-    } else {
-        w.WriteHeader(http.StatusUnauthorized)
+        _, err = db.Exec(`
+            INSERT INTO posts (title, content, username)
+            VALUES (?, ?, ?)`,
+            postData.Title, postData.Content, nickname,
+        )
+        if err != nil {
+            http.Error(w, "Failed to create post", http.StatusInternalServerError)
+            return
+        }
+
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(map[string]string{"message": "Post created successfully!"})
     }
 }
+
+
+func CheckLoginHandler(w http.ResponseWriter, r *http.Request) {
+		nickname, loggedIn := getSession(r)
+		if !loggedIn {
+			w.WriteHeader(http.StatusUnauthorized) // Return 401 Unauthorized
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"nickname": nickname})
+	}
+	
