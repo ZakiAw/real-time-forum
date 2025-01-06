@@ -100,7 +100,9 @@ function renderLoginForm() {
         
         document.body.innerHTML = `
             <div class="container">
-                <h1>Welcome to the Forum</h1>
+                <div class="header">
+                    <button id="logout-button">Logout</button>
+                </div>
                 <form id="post-form">
                     <input id="post-title" placeholder="Title" required />
                     <textarea id="post-content" placeholder="Write your post here..." required></textarea>
@@ -113,6 +115,23 @@ function renderLoginForm() {
             </div>
         `;
 
+        document.getElementById("logout-button").addEventListener("click", async () => {
+            try {
+                const response = await fetch("/logout", {
+                    method: "POST",
+                    credentials: "include", // Include cookies for session management
+                });
+
+                if (response.ok) {
+                    renderLoginForm(); // Redirect to login page after logout
+                } else {
+                    const errorText = await response.text();
+                    alert(`Logout failed: ${errorText}`);
+                }
+            } catch (err) {
+                console.error("Logout error:", err);
+            }
+        });
         // Re-attach the event listener for posting
         document.getElementById("post-form").addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -133,7 +152,7 @@ function renderLoginForm() {
                 });
 
                 if (response.ok) {
-                    renderHome(); // Refresh the page to show new posts
+                    renderHome();
                 } else {
                     const errorText = await response.text();
                     alert(`Error: ${errorText}`);

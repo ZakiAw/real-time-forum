@@ -1,9 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"encoding/json"
+	"time"
 )
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -18,14 +19,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// if r.Method == http.MethodPost {
-	// 	err := r.ParseForm()
-	// 	if err != nil {
-	// 		fmt.Println("Error parsing form:", err)
-	// 		http.Error(w, "Invalid form submission", http.StatusBadRequest)
-	// 		return
-	// 	}
-
 	nickname := r.FormValue("nickname")
 	firstName := r.FormValue("first_name")
 	lastName := r.FormValue("last_name")
@@ -34,11 +27,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	age := r.FormValue("age")
 	gender := r.FormValue("gender")
 
-	/* TESTING FORMVALUE
-	fmt.Println("Form values received:")
-	fmt.Printf("nickname: %s, firstName: %s, lastName: %s, email: %s, password: %s, age: %s, gender: %s\n",
-		nickname, firstName, lastName, email, password, age, gender)
-	*/
 	if nickname == "" || firstName == "" || lastName == "" || email == "" || password == "" || age == "" || gender == "" {
 		http.Error(w, "All fields are required", http.StatusBadRequest)
 		return
@@ -55,69 +43,69 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// w.Header().Set("Content-Type", "application/json")
-    // w.WriteHeader(http.StatusOK)
+	// w.WriteHeader(http.StatusOK)
 	setSession(w, nickname)
 	fmt.Fprint(w, "Account created successfully!")
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-    if r.Method == http.MethodGet {
-        err := tbl.ExecuteTemplate(w, "index.html", nil)
-        if err != nil {
-            fmt.Println("Error rendering template:", err)
-            http.Error(w, "Error rendering template", http.StatusInternalServerError)
-        }
-        return
-    }
+	if r.Method == http.MethodGet {
+		err := tbl.ExecuteTemplate(w, "index.html", nil)
+		if err != nil {
+			fmt.Println("Error rendering template:", err)
+			http.Error(w, "Error rendering template", http.StatusInternalServerError)
+		}
+		return
+	}
 
-    if r.Method == http.MethodPost {
-        nickname := r.FormValue("nickname")
-        password := r.FormValue("password")
+	if r.Method == http.MethodPost {
+		nickname := r.FormValue("nickname")
+		password := r.FormValue("password")
 
-        var storedPassword string
-        err := db.QueryRow(`SELECT password FROM users WHERE nickname = ?`, nickname).Scan(&storedPassword)
-        if err != nil {
-            fmt.Println("Error querying database:", err)
-            http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
-            return
-        }
+		var storedPassword string
+		err := db.QueryRow(`SELECT password FROM users WHERE nickname = ?`, nickname).Scan(&storedPassword)
+		if err != nil {
+			fmt.Println("Error querying database:", err)
+			http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
+			return
+		}
 
-        if storedPassword != password {
-            http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
-            return
-        }
+		if storedPassword != password {
+			http.Error(w, "Invalid nickname or password", http.StatusUnauthorized)
+			return
+		}
 
 		setSession(w, nickname)
 
-        // Send a JSON response on successful login
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusOK)
-        fmt.Fprint(w, `{"message": "Login successful!"}`)
-    }
+		// Send a JSON response on successful login
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `{"message": "Login successful!"}`)
+	}
 }
 
 func PostHandler(w http.ResponseWriter, r *http.Request) {
-    if r.Method == http.MethodGet {
-        // Query the database for posts
-        rows, err := db.Query(`
+	if r.Method == http.MethodGet {
+		// Query the database for posts
+		rows, err := db.Query(`
             SELECT title, content, username, created_at
             FROM posts
 			ORDER BY created_at DESC
         `)
-        if err != nil {
-            http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
-            return
-        }
-        defer rows.Close()
+		if err != nil {
+			http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
 		type Post struct {
-			Title    string `json:"title"`
-			Content  string `json:"content"`
-			Username string `json:"username"`
+			Title     string `json:"title"`
+			Content   string `json:"content"`
+			Username  string `json:"username"`
 			CreatedAt string `json:"created_at"`
 		}
-		
+
 		var posts []Post
-		
+
 		for rows.Next() {
 			var post Post
 			err := rows.Scan(&post.Title, &post.Content, &post.Username, &post.CreatedAt)
@@ -127,57 +115,70 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			posts = append(posts, post)
 		}
-		
-        w.Header().Set("Content-Type", "application/json")
-        if err := json.NewEncoder(w).Encode(posts); err != nil {
-            http.Error(w, "Failed to encode posts as JSON", http.StatusInternalServerError)
-        }
-        return
-    }
 
-    if r.Method == http.MethodPost {
-        // Handle post creation as before
-        var postData struct {
-            Title   string `json:"title"`
-            Content string `json:"content"`
-        }
-        err := json.NewDecoder(r.Body).Decode(&postData)
-        if err != nil {
-            http.Error(w, "Invalid input", http.StatusBadRequest)
-            return
-        }
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(posts); err != nil {
+			http.Error(w, "Failed to encode posts as JSON", http.StatusInternalServerError)
+		}
+		return
+	}
 
-        _, loggedIn := getSession(r)
-        if !loggedIn {
-            http.Redirect(w, r, "/login", http.StatusSeeOther)
-            return
-        }
-
-        nickname, _ := getSession(r)
-
-        _, err = db.Exec(`
-            INSERT INTO posts (title, content, username)
-            VALUES (?, ?, ?)`,
-            postData.Title, postData.Content, nickname,
-        )
-        if err != nil {
-            http.Error(w, "Failed to create post", http.StatusInternalServerError)
-            return
-        }
-
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(map[string]string{"message": "Post created successfully!"})
-    }
-}
-
-
-func CheckLoginHandler(w http.ResponseWriter, r *http.Request) {
-		nickname, loggedIn := getSession(r)
-		if !loggedIn {
-			w.WriteHeader(http.StatusUnauthorized) // Return 401 Unauthorized
+	if r.Method == http.MethodPost {
+		// Handle post creation as before
+		var postData struct {
+			Title   string `json:"title"`
+			Content string `json:"content"`
+		}
+		err := json.NewDecoder(r.Body).Decode(&postData)
+		if err != nil {
+			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
 		}
+
+		_, loggedIn := getSession(r)
+		if !loggedIn {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		nickname, _ := getSession(r)
+
+		_, err = db.Exec(`
+            INSERT INTO posts (title, content, username)
+            VALUES (?, ?, ?)`,
+			postData.Title, postData.Content, nickname,
+		)
+		if err != nil {
+			http.Error(w, "Failed to create post", http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"nickname": nickname})
+		json.NewEncoder(w).Encode(map[string]string{"message": "Post created successfully!"})
 	}
-	
+}
+
+func CheckLoginHandler(w http.ResponseWriter, r *http.Request) {
+	nickname, loggedIn := getSession(r)
+	if !loggedIn {
+		w.WriteHeader(http.StatusUnauthorized) // Return 401 Unauthorized
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"nickname": nickname})
+}
+
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	cookie := &http.Cookie{
+		Name:    "sID",
+		Value:   "",
+		Path:    "/",
+		Expires: time.Unix(0, 0),
+		Secure:   true,
+		HttpOnly: true,
+	}
+	http.SetCookie(w, cookie)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Logged out successfully!"})
+}
