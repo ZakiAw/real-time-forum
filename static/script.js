@@ -91,80 +91,85 @@ function renderLoginForm() {
     try {
         const response = await fetch("/home", {
             method: "GET",
-            credentials: "include", // Include cookies if using sessions for authentication
+            credentials: "include", // Include cookies for session authentication
         });
 
-        const posts = await response.json();
+        if (!response.ok) {
+            throw new Error(`Failed to load home: ${await response.text()}`);
+        }
 
-        // Check if posts is null or not an array
-        
+        const { posts, members } = await response.json();
+
         document.body.innerHTML = `
             <div class="container">
                 <div class="header">
                     <button id="logout-button">Logout</button>
                 </div>
-                <form id="post-form">
-                    <input id="post-title" placeholder="Title" required />
-                    <textarea id="post-content" placeholder="Write your post here..." required></textarea>
-                    <button type="submit">Post</button>
-                </form>
-                <div id="posts">
-                    <h2>Recent Posts</h2>
-                    <div id="post-list" class="post-grid"></div>
+                <div class="main-content">
+                    <div class="members-list">
+                        <h3>Members</h3>
+                        <ul id="member-list"></ul>
+                    </div>
+                    <div class="content">
+                        <form id="post-form">
+                            <input id="post-title" placeholder="Title" required />
+                            <textarea id="post-content" placeholder="Write your post here..." required></textarea>
+                            <button type="submit">Post</button>
+                        </form>
+                        <div id="posts">
+                            <h2>Recent Posts</h2>
+                            <div id="post-list" class="post-grid"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
 
+        // Attach logout functionality
         document.getElementById("logout-button").addEventListener("click", async () => {
             try {
-                const response = await fetch("/logout", {
+                const logoutResponse = await fetch("/logout", {
                     method: "POST",
-                    credentials: "include", // Include cookies for session management
+                    credentials: "include",
                 });
 
-                if (response.ok) {
-                    renderLoginForm(); // Redirect to login page after logout
+                if (logoutResponse.ok) {
+                    renderLoginForm();
                 } else {
-                    const errorText = await response.text();
-                    alert(`Logout failed: ${errorText}`);
+                    alert(`Logout failed: ${await logoutResponse.text()}`);
                 }
             } catch (err) {
                 console.error("Logout error:", err);
             }
         });
-        // Re-attach the event listener for posting
-        document.getElementById("post-form").addEventListener("submit", async (e) => {
+
+        // Handle post submission
+        const postForm = document.getElementById("post-form");
+        postForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            if (posts == null) {
-                postList.innerHTML = "<p>No posts available yet.</p>";
-            } else if  (!Array.isArray(posts)) {
-                console.error("Invalid response format:", posts);
-                return;  // Stop if posts is invalid
-            }
             const title = document.getElementById("post-title").value;
             const content = document.getElementById("post-content").value;
-            
+
             try {
-                const response = await fetch("/home", {
+                const postResponse = await fetch("/home", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ title, content }),
                 });
 
-                if (response.ok) {
-                    renderHome();
+                if (postResponse.ok) {
+                    renderHome(); // Refresh posts after submission
                 } else {
-                    const errorText = await response.text();
-                    alert(`Error: ${errorText}`);
+                    alert(`Failed to post: ${await postResponse.text()}`);
                 }
             } catch (err) {
                 console.error("Error posting:", err);
             }
         });
 
-        // Display posts
+        // Render posts
         const postList = document.getElementById("post-list");
-        if (posts.length === 0) {
+        if (!posts || posts.length === 0) {
             postList.innerHTML = "<p>No posts available yet.</p>";
         } else {
             posts.forEach(post => {
@@ -183,10 +188,34 @@ function renderLoginForm() {
             });
         }
 
+        // Render members
+        const memberList = document.getElementById("member-list");
+        members.forEach(member => {
+            const memberItem = document.createElement("li");
+            memberItem.className = "member-item";
+            memberItem.textContent = member.nickname;
+
+            const dropdown = document.createElement("div");
+            dropdown.className = "chat-dropdown";
+            dropdown.innerHTML = `
+                <p>Start Chat</p>
+                <p>View Profile</p>
+            `;
+
+            memberItem.appendChild(dropdown);
+            memberItem.addEventListener("click", () => {
+                memberItem.classList.toggle("active");
+            });
+
+            memberList.appendChild(memberItem);
+        });
+
     } catch (err) {
-        console.error("Error loading posts:", err);
+        console.error("Error loading home page:", err);
+        alert("Failed to load home page.");
     }
 }
+
 
 document.addEventListener("DOMContentLoaded", async () => {
     const loggedIn = await checkLoginStatus();  // Function to check login status

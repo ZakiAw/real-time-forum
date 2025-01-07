@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
@@ -86,17 +87,19 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		// Query the database for posts
+		// Retrieve posts
 		rows, err := db.Query(`
             SELECT title, content, username, created_at
             FROM posts
-			ORDER BY created_at DESC
+            ORDER BY created_at DESC
         `)
 		if err != nil {
+			log.Printf("Error querying posts: %v", err)
 			http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
+
 		type Post struct {
 			Title     string `json:"title"`
 			Content   string `json:"content"`
@@ -105,54 +108,85 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var posts []Post
-
 		for rows.Next() {
 			var post Post
-			err := rows.Scan(&post.Title, &post.Content, &post.Username, &post.CreatedAt)
-			if err != nil {
+			if err := rows.Scan(&post.Title, &post.Content, &post.Username, &post.CreatedAt); err != nil {
+				log.Printf("Error scanning post: %v", err)
 				http.Error(w, "Failed to scan post", http.StatusInternalServerError)
 				return
 			}
 			posts = append(posts, post)
 		}
 
+		// Retrieve members
+		memberRows, err := db.Query(`SELECT nickname FROM users`)
+		if err != nil {
+			log.Printf("Error querying users: %v", err)
+			http.Error(w, "Failed to retrieve users", http.StatusInternalServerError)
+			return
+		}
+		defer memberRows.Close()
+
+		type User struct {
+			Nickname string `json:"nickname"`
+		}
+
+		var users []User
+		for memberRows.Next() {
+			var user User
+			if err := memberRows.Scan(&user.Nickname); err != nil {
+				log.Printf("Error scanning member: %v", err)
+				http.Error(w, "Failed to scan member", http.StatusInternalServerError)
+				return
+			}
+			users = append(users, user)
+		}
+
+		// Send posts and members
+		response := map[string]interface{}{
+			"posts":   posts,
+			"members": users,
+		}
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(posts); err != nil {
-			http.Error(w, "Failed to encode posts as JSON", http.StatusInternalServerError)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			log.Printf("Error encoding response: %v", err)
+			http.Error(w, "Failed to encode response as JSON", http.StatusInternalServerError)
 		}
 		return
 	}
 
 	if r.Method == http.MethodPost {
-		// Handle post creation as before
+		// Decode input
 		var postData struct {
 			Title   string `json:"title"`
 			Content string `json:"content"`
 		}
-		err := json.NewDecoder(r.Body).Decode(&postData)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&postData); err != nil {
+			log.Printf("Error decoding input: %v", err)
 			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
 		}
 
-		_, loggedIn := getSession(r)
+		// Verify session
+		nickname, loggedIn := getSession(r)
 		if !loggedIn {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
-		nickname, _ := getSession(r)
-
-		_, err = db.Exec(`
+		// Insert post
+		_, err := db.Exec(`
             INSERT INTO posts (title, content, username)
             VALUES (?, ?, ?)`,
 			postData.Title, postData.Content, nickname,
 		)
 		if err != nil {
+			log.Printf("Error inserting post: %v", err)
 			http.Error(w, "Failed to create post", http.StatusInternalServerError)
 			return
 		}
 
+		// Success response
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"message": "Post created successfully!"})
 	}
@@ -170,10 +204,10 @@ func CheckLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	cookie := &http.Cookie{
-		Name:    "sID",
-		Value:   "",
-		Path:    "/",
-		Expires: time.Unix(0, 0),
+		Name:     "sID",
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
 		Secure:   true,
 		HttpOnly: true,
 	}
