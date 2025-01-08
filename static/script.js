@@ -1,7 +1,6 @@
-
 function renderSignupForm() {
     document.body.innerHTML = `
-         <div class="container">
+         <div class="container1">
              <h1>Sign Up</h1>
              <form id="signup-form">
                  <input id="nname" name="nickname" placeholder="Nickname" required>
@@ -54,12 +53,13 @@ function renderSignupForm() {
 
 function renderLoginForm() {
     document.body.innerHTML = `
-        <div class="container">
+        <div class="container1">
             <h1>Log in</h1>
             <form id="login-form">
                 <input id="nname" name="nickname" placeholder="Nickname" required>
                 <input id="password" name="password" placeholder="Password" type="password" required>
                 <button id="submit" type="submit">Log In</button>
+                <button id="signup-page-button">Sign up</button>
             </form>
         </div>
     `;
@@ -76,7 +76,8 @@ function renderLoginForm() {
             });
  
             if (response.ok) {
-                // Login successful, now render the home page
+                const { nickname } = await response.json();
+                sessionStorage.setItem("username", nickname)
                 renderHome();
             } else {
                 const errorText = await response.text();
@@ -85,6 +86,10 @@ function renderLoginForm() {
         } catch (err) {
             console.error("Login error:", err);
         }
+    });
+    const signupPageButton = document.getElementById("signup-page-button");
+    signupPageButton.addEventListener("click", () => {
+        renderSignupForm();
     });
  }
  async function renderHome() {
@@ -99,11 +104,12 @@ function renderLoginForm() {
         }
 
         const { posts, members } = await response.json();
-
+        const storedUsername = sessionStorage.getItem("username");
         document.body.innerHTML = `
             <div class="container">
                 <div class="header">
-                    <button id="logout-button">Logout</button>
+                <div>${storedUsername}</div>
+                <button id="logout-button">Logout</button>
                 </div>
                 <div class="main-content">
                     <div class="members-list">
@@ -112,9 +118,8 @@ function renderLoginForm() {
                     </div>
                     <div class="content">
                         <form id="post-form">
-                            <input id="post-title" placeholder="Title" required />
-                            <textarea id="post-content" placeholder="Write your post here..." required></textarea>
-                            <button type="submit">Post</button>
+                            <textarea id="post-content" placeholder="Post" required></textarea>
+                            <button class="comment-button" type="submit">Post</button>
                         </form>
                         <div id="posts">
                             <h2>Recent Posts</h2>
@@ -147,14 +152,13 @@ function renderLoginForm() {
         const postForm = document.getElementById("post-form");
         postForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const title = document.getElementById("post-title").value;
             const content = document.getElementById("post-content").value;
 
             try {
                 const postResponse = await fetch("/home", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ title, content }),
+                    body: JSON.stringify({ content }),
                 });
 
                 if (postResponse.ok) {
@@ -180,14 +184,19 @@ function renderLoginForm() {
                     <div class="post-header">
                         <span class="post-username">${post.username}</span>
                     </div>
-                    <h3 class="post-title">${post.title}</h3>
                     <p class="post-content">${post.content}</p>
+                    <button class="comment-button">Comment</button>
                     <small class="post-date">${new Date(post.created_at).toLocaleString()}</small>
                 `;
+
+                // Attach functionality to the Comment button
+                postDiv.querySelector(".comment-button").addEventListener("click", () => {
+                    renderPostComments(post);
+                });
+
                 postList.appendChild(postDiv);
             });
         }
-
         // Render members
         const memberList = document.getElementById("member-list");
         members.forEach(member => {

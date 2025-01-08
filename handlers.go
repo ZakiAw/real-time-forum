@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var usernameglob string
+
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	tbl.ExecuteTemplate(w, "index.html", nil)
 	// fmt.Println("Incoming request method:", r.Method)
@@ -77,11 +79,10 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		setSession(w, nickname)
-
+		usernameglob = nickname
 		// Send a JSON response on successful login
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"message": "Login successful!"}`)
+		json.NewEncoder(w).Encode(map[string]string{"nickname": usernameglob})
 	}
 }
 
@@ -89,7 +90,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		// Retrieve posts
 		rows, err := db.Query(`
-            SELECT title, content, username, created_at
+            SELECT content, username, created_at
             FROM posts
             ORDER BY created_at DESC
         `)
@@ -101,7 +102,6 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		defer rows.Close()
 
 		type Post struct {
-			Title     string `json:"title"`
 			Content   string `json:"content"`
 			Username  string `json:"username"`
 			CreatedAt string `json:"created_at"`
@@ -110,7 +110,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		var posts []Post
 		for rows.Next() {
 			var post Post
-			if err := rows.Scan(&post.Title, &post.Content, &post.Username, &post.CreatedAt); err != nil {
+			if err := rows.Scan(&post.Content, &post.Username, &post.CreatedAt); err != nil {
 				log.Printf("Error scanning post: %v", err)
 				http.Error(w, "Failed to scan post", http.StatusInternalServerError)
 				return
@@ -119,7 +119,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Retrieve members
-		memberRows, err := db.Query(`SELECT nickname FROM users`)
+		memberRows, err := db.Query(`SELECT nickname FROM users WHERE nickname != ?`, usernameglob)
 		if err != nil {
 			log.Printf("Error querying users: %v", err)
 			http.Error(w, "Failed to retrieve users", http.StatusInternalServerError)
@@ -130,7 +130,6 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		type User struct {
 			Nickname string `json:"nickname"`
 		}
-
 		var users []User
 		for memberRows.Next() {
 			var user User
@@ -158,7 +157,6 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		// Decode input
 		var postData struct {
-			Title   string `json:"title"`
 			Content string `json:"content"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&postData); err != nil {
@@ -176,9 +174,9 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Insert post
 		_, err := db.Exec(`
-            INSERT INTO posts (title, content, username)
-            VALUES (?, ?, ?)`,
-			postData.Title, postData.Content, nickname,
+            INSERT INTO posts (content, username)
+            VALUES (?, ?)`,
+			postData.Content, nickname,
 		)
 		if err != nil {
 			log.Printf("Error inserting post: %v", err)
