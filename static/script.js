@@ -243,3 +243,69 @@ async function checkLoginStatus() {
     });
     return response.ok;
 }
+
+function renderPostComments(post) {
+    const contentDiv = document.querySelector(".content"); // assuming content is the div you want to update
+
+    contentDiv.innerHTML = `
+    <div class="commentpost">    
+    <div class="post-header">
+            <span class="post-username">${post.username}</span>
+        </div>
+        <p class="post-content">${post.content}</p>
+        <small class="post-date">${new Date(post.created_at).toLocaleString()}</small>
+</div>
+        <div id="comments-section">
+            <h3>Comments</h3>
+            <ul id="comment-list"></ul>
+            <textarea id="new-comment" placeholder="Comment"></textarea>
+            <button id="submit-comment">Post</button>
+        </div>
+    `;
+
+    // Add functionality to handle new comment submission
+    document.getElementById("submit-comment").addEventListener("click", async () => {
+        const commentText = document.getElementById("new-comment").value;
+
+        if (!commentText) return; // Don't post empty comments
+
+        try {
+            // Assuming you are sending the comment to the server
+            const commentResponse = await fetch(`/posts/${post.id}/comments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ content: commentText }),
+            });
+
+            if (commentResponse.ok) {
+                const newComment = await commentResponse.json();
+                addCommentToList(newComment); // Update the comment list with the new comment
+            } else {
+                alert("Failed to post comment");
+            }
+        } catch (err) {
+            console.error("Error posting comment:", err);
+        }
+    });
+
+    // Function to add new comment to the list
+    function addCommentToList(comment) {
+        const commentList = document.getElementById("comment-list");
+        const commentItem = document.createElement("li");
+        commentItem.className = "comment-item";
+        commentItem.innerHTML = `
+            <span class="comment-username">${comment.username}</span>: 
+            <span class="comment-content">${comment.content}</span>
+        `;
+        commentList.appendChild(commentItem);
+    }
+
+    // Assuming comments are already available when rendering the post
+    if (post.comments && post.comments.length > 0) {
+        post.comments.forEach(comment => {
+            addCommentToList(comment); // Populate comments when the post is rendered
+        });
+    }
+}
