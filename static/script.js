@@ -244,44 +244,59 @@ async function checkLoginStatus() {
     return response.ok;
 }
 
-function renderPostComments(post) {
-    const contentDiv = document.querySelector(".content"); // assuming content is the div you want to update
+async function renderPostComments(post) {
+    const contentDiv = document.querySelector(".content");
 
     contentDiv.innerHTML = `
     <div class="commentpost">    
-    <div class="post-header">
+        <div class="post-header">
             <span class="post-username">${post.username}</span>
         </div>
         <p class="post-content">${post.content}</p>
         <small class="post-date">${new Date(post.created_at).toLocaleString()}</small>
-</div>
-        <div id="comments-section">
-            <h3>Comments</h3>
-            <ul id="comment-list"></ul>
-            <textarea id="new-comment" placeholder="Comment"></textarea>
-            <button id="submit-comment">Post</button>
-        </div>
-    `;
+    </div>
+    <div id="comments-section">
+        <textarea id="new-comment" placeholder="Comment"></textarea>
+        <button id="submit-comment">Post</button>
+        <button id="back-button">Back</button>
+        <h3>Comments</h3>
+        <ul id="comment-list"></ul>
+    </div>`;
 
-    // Add functionality to handle new comment submission
+    // Fetch all comments when entering the comment section
+    try {
+        const commentResponse = await fetch(`/comments`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ post_id: post.id }), // Send post_id to get comments for that post
+        });
+
+        if (commentResponse.ok) {
+            const comments = await commentResponse.json();
+            updateCommentList(comments); // Update comment list
+        } else {
+            console.error("Failed to fetch comments");
+        }
+    } catch (err) {
+        console.error("Error fetching comments:", err);
+    }
+
+    // Handle posting a new comment
     document.getElementById("submit-comment").addEventListener("click", async () => {
         const commentText = document.getElementById("new-comment").value;
 
         if (!commentText) return; // Don't post empty comments
 
         try {
-            // Assuming you are sending the comment to the server
-            const commentResponse = await fetch(`/posts/${post.id}/comments`, {
+            const commentResponse = await fetch(`/comments`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ content: commentText }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ post_id: post.id, content: commentText }),
             });
 
             if (commentResponse.ok) {
-                const newComment = await commentResponse.json();
-                addCommentToList(newComment); // Update the comment list with the new comment
+                const updatedComments = await commentResponse.json();
+                updateCommentList(updatedComments); // Update comment list with new comments
             } else {
                 alert("Failed to post comment");
             }
@@ -290,22 +305,23 @@ function renderPostComments(post) {
         }
     });
 
-    // Function to add new comment to the list
-    function addCommentToList(comment) {
-        const commentList = document.getElementById("comment-list");
-        const commentItem = document.createElement("li");
-        commentItem.className = "comment-item";
-        commentItem.innerHTML = `
-            <span class="comment-username">${comment.username}</span>: 
-            <span class="comment-content">${comment.content}</span>
-        `;
-        commentList.appendChild(commentItem);
-    }
+    document.getElementById("back-button").addEventListener("click", () => {
+        renderHome(); // Return to the main post list
+    });
 
-    // Assuming comments are already available when rendering the post
-    if (post.comments && post.comments.length > 0) {
-        post.comments.forEach(comment => {
-            addCommentToList(comment); // Populate comments when the post is rendered
+    // Render the comment list
+    function updateCommentList(comments) {
+        const commentList = document.getElementById("comment-list");
+        commentList.innerHTML = ''; // Clear the existing list
+
+        comments.forEach(comment => {
+            const commentItem = document.createElement("li");
+            commentItem.className = "comment-item";
+            commentItem.innerHTML = `
+                <span class="comment-username">${comment.username}</span>: 
+                <span class="comment-content">${comment.content}</span>
+            `;
+            commentList.appendChild(commentItem);
         });
     }
 }

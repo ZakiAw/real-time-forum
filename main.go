@@ -25,6 +25,7 @@ func main() {
 	http.HandleFunc("/logout", LogoutHandler)
 	http.HandleFunc("/home", PostHandler)
 	http.HandleFunc("/check-login", CheckLoginHandler)
+	http.HandleFunc("/comments", CommentHandler)
 	tbl = template.Must(template.ParseFiles("./index.html"))
 	http.ListenAndServe(":8080", nil)
 	}

@@ -214,3 +214,114 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Logged out successfully!"})
 }
+
+func CommentHandler(w http.ResponseWriter, r *http.Request) {
+	type Comment struct {
+		ID        int    `json:"id"`
+		POSTID 	  int    `json:"post_id"`
+		Content   string `json:"content"`
+		Username  string `json:"username"`
+		CreatedAt string `json:"created_at"`
+	}
+
+    // Handle GET request for fetching comments
+    if r.Method == http.MethodGet {
+        // Decode the request body to extract post_id
+        var input struct {
+            PostID int `json:"post_id"`
+        }
+        if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+            log.Printf("Error decoding input: %v", err)
+            http.Error(w, "Invalid input", http.StatusBadRequest)
+            return
+        }
+
+        // Query comments for the specific post
+        rows, err := db.Query(`
+            SELECT id, post_id, content, username, created_at 
+            FROM comments 
+            WHERE post_id = ?
+            ORDER BY created_at ASC`, input.PostID)
+        if err != nil {
+            log.Printf("Error querying comments: %v", err)
+            http.Error(w, "Failed to retrieve comments", http.StatusInternalServerError)
+            return
+        }
+        defer rows.Close()
+
+        var comments []Comment
+        for rows.Next() {
+            var comment Comment
+            if err := rows.Scan(&comment.ID,&comment.POSTID, &comment.Content, &comment.Username, &comment.CreatedAt); err != nil {
+                log.Printf("Error scanning comment: %v", err)
+                http.Error(w, "Failed to scan comment", http.StatusInternalServerError)
+                return
+            }
+            comments = append(comments, comment)
+        }
+
+        // Return the comments as a JSON response
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(comments)
+        return
+    }
+
+    // Handle POST request for posting a new comment
+    if r.Method == http.MethodPost {
+        // Decode the input data for a new comment
+        var input struct {
+            PostID  int    `json:"post_id"`
+            Content string `json:"content"`
+        }
+        if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+            log.Printf("Error decoding input: %v", err)
+            http.Error(w, "Invalid input", http.StatusBadRequest)
+            return
+        }
+
+        // Verify session for the user
+        nickname, loggedIn := getSession(r)
+        if !loggedIn {
+            http.Redirect(w, r, "/login", http.StatusSeeOther)
+            return
+        }
+
+        // Insert the new comment into the database
+        _, err := db.Exec(`
+            INSERT INTO comments (post_id, content, username) 
+            VALUES (?, ?, ?)`, input.PostID, input.Content, nickname)
+        if err != nil {
+            log.Printf("Error inserting comment: %v", err)
+            http.Error(w, "Failed to add comment", http.StatusInternalServerError)
+            return
+        }
+
+        // Fetch updated comments after insertion
+        rows, err := db.Query(`
+            SELECT id, content, username, created_at 
+            FROM comments 
+            WHERE post_id = ?
+            ORDER BY created_at ASC`, input.PostID)
+        if err != nil {
+            log.Printf("Error querying updated comments: %v", err)
+            http.Error(w, "Failed to retrieve comments", http.StatusInternalServerError)
+            return
+        }
+        defer rows.Close()
+
+        var comments []Comment
+        for rows.Next() {
+            var comment Comment
+            if err := rows.Scan(&comment.ID, &comment.Content, &comment.Username, &comment.CreatedAt); err != nil {
+                log.Printf("Error scanning comment: %v", err)
+                http.Error(w, "Failed to scan comment", http.StatusInternalServerError)
+                return
+            }
+            comments = append(comments, comment)
+        }
+
+        // Return updated comments as a JSON response
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(comments)
+    }
+}
